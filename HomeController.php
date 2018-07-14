@@ -14,7 +14,6 @@ class HomeController
 
    public function home(Request $request, Response $response, $args, $body) {
 
-	//$body = $request->getQueryParams();
         #hit curl
 	$res_data = $this->_hit_api($body);
         #frame our data
@@ -44,28 +43,10 @@ class HomeController
 	return $res_data;
    }
 
-   public function contact($request, $response, $args) {
-        // your code
-        // to access items in the container... $this->container->get('');
+   public function send_output(Response $response, $data, $code = 200) {
+	$response = $response->withHeader('Content-Type', 'application/json');
+        $response = $response->withStatus($code);
+        $response = $response->getBody()->write(json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_NUMERIC_CHECK | JSON_PRETTY_PRINT));
         return $response;
    }
 }
-
-/*class HomeController
-{
-    protected $view;
-
-    public function __construct(\Slim\Views\Twig $view) {
-        $this->view = $view;
-    }
-    public function home($request, $response, $args) {
-      // your code here
-      // use $this->view to render the HTML
-     $name = $args['name'];
-    $response->getBody()->write("Hello, $name");
-    $response->getBody()->write("\n Thank you for requesting top-headlines");
-      return $response;
-    }
-}
-
-*/

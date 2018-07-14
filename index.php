@@ -11,7 +11,7 @@ require 'vendor/autoload.php';
 $container = new \Slim\Container;
 $app = new \Slim\App($container);
 
-
+# configure caching - REDIS
 $container['cache'] = function ($c) {
     $config = [
         'schema' => 'tcp',
@@ -32,32 +32,26 @@ $app->get('/', function (Request $request, Response $response, array $args){
         return $response;
 });
 
-
+# handle the actual request
 $app->get('/top-headlines', function (Request $request, Response $response, array $args){
+    $bar = new HomeController();
     # validate input data
     $validate = new ValidateController();
     $validator = $validate->validate($request);
     if ($validator['status'] == "error") {
 	$data = array("status" => "error", "message" => $validator['message'], "data"  => $output, "code" => 400);
-        $response = $response->withHeader('Content-Type', 'application/json');
-        $response = $response->withStatus(400);
-        $response = $response->getBody()->write(json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_NUMERIC_CHECK | JSON_PRETTY_PRINT));
-        return $response;
+	return $bar->send_output($response, $data, 400);
     }
+
     # check in cache (if request is made within 10 minutes, return same data)
     $cache = new CachingController($this->get('cache'));
     $output = $cache->check($validator['data']);
-    #return $bar->doSomething();
     if (!empty($output)) {
     	$data = array("status" => "success", "message" => "Thank you for the request, this is being served from cache", "data"  => $output,  "code" => 201);
-    	$response = $response->withHeader('Content-Type', 'application/json');
-    	$response = $response->withStatus(200);
-    	$response = $response->getBody()->write(json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_NUMERIC_CHECK | JSON_PRETTY_PRINT));
-    	return $response;
+	return $bar->send_output($response, $data, 200);
     }
 
     # process the request
-    $bar = new HomeController();
     $output = $bar->home($request, $response, $args, $validator['data']);
     
     if (!empty($output)) {
@@ -66,12 +60,10 @@ $app->get('/top-headlines', function (Request $request, Response $response, arra
     	# return output
     	$data = array("status" => "success", "message" => "Thank you for the request", "data"  => $output, "code" => 200);
     } else {
-	$data = array("status" => "success", "message" => "No articles available for this request", "data"  => $output, "code" => 404);
+	$data = array("status" => "success", "message" => "No articles are found for this request", "data"  => $output, "code" => 404);
     }
-    $response = $response->withHeader('Content-Type', 'application/json');
-    $response = $response->withStatus(200);
-    $response = $response->getBody()->write(json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_NUMERIC_CHECK | JSON_PRETTY_PRINT));
-    return $response;
+
+    return $bar->send_output($response, $data, 200);
 });
 
 $app->run();
